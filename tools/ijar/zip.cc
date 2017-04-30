@@ -994,7 +994,16 @@ ZipBuilder* ZipBuilder::Create(const char* zip_file, u8 estimated_size) {
                                 (u8) std::numeric_limits<size_t>::max());
 
   void *zipdata_out = mmap(NULL, mmap_length, PROT_WRITE,
-                           MAP_SHARED, fd_out, 0);
+	// http://stackoverflow.com/questions/18420473/invalid-argument-for-read-write-mmap
+	// https://groups.google.com/forum/#!topic/android-building/qXsk-YpMdYo
+	// Fix: This reason this was failing is subtle: if we run the code inside a VirtualBox VM, 
+	// and the file was attempting to mmap was in a shared directory on the host machine. 
+	// The VirtualBox virtual filesystem apparently doesn't implement mmap with the MAP_SHARED option 
+	// across the boundary of the hypervisor. So it result in the android build failed in the situation of, 
+	// code is put in a shared folder(can be accessed by both vbox and host machines), builder is running inside the vbox
+	
+  //                         MAP_SHARED, fd_out, 0);
+                           MAP_SHARED | MAP_ANONYMOUS, fd_out, 0);
   if (zipdata_out == MAP_FAILED) {
     fprintf(stderr, "output_length=%llu\n", estimated_size);
     return NULL;
